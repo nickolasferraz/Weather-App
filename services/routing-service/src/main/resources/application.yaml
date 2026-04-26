@@ -1,3 +1,39 @@
 spring:
   application:
     name: routing-service
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: routing-service-group
+      auto-offset-reset: earliest
+
+  datasource:
+    url: ${COCKROACH_URL:jdbc:postgresql://localhost:26257/routing?sslmode=disable}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+
+  management:
+    endpoints:
+      web:
+        base-path: /actuator
+        exposure:
+          include: health, metrics, prometheus, info
+    endpoint:
+      health:
+        show-details: always
+        show-components: always
+      prometheus:
+        enabled: true
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+      tags:
+        application: ${spring.application.name}
+        service: ${spring.application.name}

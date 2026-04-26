@@ -1,3 +1,41 @@
 spring:
   application:
     name: user-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/userdb}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    show-sql: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: user-service-group
+      auto-offset-reset: earliest
+
+  management:
+    endpoints:
+      web:
+        base-path: /actuator
+        exposure:
+          include: health, metrics, prometheus, info
+    endpoint:
+      health:
+        show-details: always
+        show-components: always
+      prometheus:
+        enabled: true
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+      tags:
+        application: ${spring.application.name}
+        service: ${spring.application.name}

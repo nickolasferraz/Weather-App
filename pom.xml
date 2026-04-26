@@ -18,11 +18,11 @@
         <module>common/common-events</module>
         <module>common/common-lib</module>
         <module>common/saga-core</module>
-
         <module>services/user-service</module>
         <module>services/alert-service</module>
         <module>services/weather-service</module>
         <module>services/routing-service</module>
+        <module>services/observability-service</module>
     </modules>
 
     <properties>
@@ -33,14 +33,16 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>3.5.13</spring-boot.version>
         <lombok.version>1.18.42</lombok.version>
-
-        <!-- ✅ Fixa a versão do compiler plugin -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <aws.sdk.version>2.25.40</aws.sdk.version>
+        <logstash.encoder.version>7.4</logstash.encoder.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
 
+            <!-- ✅ BOMs PRIMEIRO — devem ser os primeiros da lista -->
+            <!-- Todas as deps Spring Boot e Micrometer resolvem versão daqui -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -49,14 +51,42 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Source: https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ✅ Deps sem <version> — resolvidas pelo BOM acima -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-actuator</artifactId>
+                <version>${spring-boot.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-registry-prometheus</artifactId>
+                <version>1.14.5</version>
+            </dependency>
+
+            <!-- Deps com versão explícita (não estão no BOM do Spring) -->
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
-                <version>1.18.42</version>
+                <version>${lombok.version}</version>
                 <scope>compile</scope>
             </dependency>
 
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash.encoder.version}</version>
+            </dependency>
+
+            <!-- Módulos internos do projeto -->
             <dependency>
                 <groupId>com.weather.app</groupId>
                 <artifactId>common-events</artifactId>
@@ -92,8 +122,6 @@
     <build>
         <pluginManagement>
             <plugins>
-
-                <!-- ✅ Versão explícita compatível com Java 25 -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
@@ -129,7 +157,6 @@
                         </excludes>
                     </configuration>
                 </plugin>
-
             </plugins>
         </pluginManagement>
     </build>

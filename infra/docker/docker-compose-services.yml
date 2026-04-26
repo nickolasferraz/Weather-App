@@ -1,0 +1,217 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  docker-compose-services.yml                                ║
+# ║  Sobe: os 5 microserviços Java                              ║
+# ║  PRÉ-REQUISITO: docker-compose-infra.yml rodando           ║
+# ║                                                             ║
+# ║  Dev:  docker compose -f infra/docker/docker-compose-services.yml up -d
+# ║  Prod: DOCKERFILE=Dockerfile docker compose \              ║
+# ║        -f infra/docker/docker-compose-services.yml up -d --build
+# ╚══════════════════════════════════════════════════════════════╝
+#
+# IMPORTANTE — Como os commons são resolvidos:
+# common-events, common-lib e saga-core são módulos Maven.
+# O Dockerfile de cada serviço faz "mvn install" do pom.xml pai
+# que já inclui esses módulos como dependências via <modules>.
+# Eles NÃO precisam de container próprio — são JARs no classpath.
+#
+# HEALTHCHECK — Usa wget (disponível em imagens JRE slim/Alpine).
+# Porta interna sempre 8080 — o container não conhece o mapeamento do host.
+
+services:
+
+  # ══════════════════════════════════════════
+  # WEATHER SERVICE — PAEL | Redis | ZGC
+  # ══════════════════════════════════════════
+  weather-service:
+    build:
+      context: ../..
+      dockerfile: services/weather-service/${DOCKERFILE:-Dockerfile.dev}
+    container_name: weather-service
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 300s
+    volumes:
+      - ../../services/weather-service/src:/app/services/weather-service/src
+      - ../../common:/app/common
+      - ~/.m2:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/weatherdb
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis-weather
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_WEATHER_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+    env_file: ../../.env
+    networks:
+      - weather-net
+      - user-net
+      - internal-net
+      - kafka-net
+
+  # ══════════════════════════════════════════
+  # ROUTING SERVICE — PCEC | CockroachDB | ZGC
+  # ══════════════════════════════════════════
+  routing-service:
+    build:
+      context: ../..
+      dockerfile: services/routing-service/${DOCKERFILE:-Dockerfile.dev}
+    container_name: routing-service
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - ../../services/routing-service/src:/app/services/routing-service/src
+      - ../../common:/app/common
+      - ~/.m2:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - COCKROACH_URL=postgresql://root@cockroachdb:26257/routing?sslmode=disable
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+    env_file: ../../.env
+    networks:
+      - routing-net
+      - internal-net
+      - kafka-net
+
+  # ══════════════════════════════════════════
+  # USER SERVICE — PC/EC | PostgreSQL | G1GC
+  # ══════════════════════════════════════════
+  user-service:
+    build:
+      context: ../..
+      dockerfile: services/user-service/${DOCKERFILE:-Dockerfile.dev}
+    container_name: user-service
+    restart: unless-stopped
+    ports:
+      - "8083:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - ../../services/user-service/src:/app/services/user-service/src
+      - ../../common:/app/common
+      - ~/.m2:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/userdb
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+    env_file: ../../.env
+    networks:
+      - user-net
+      - internal-net
+      - kafka-net
+
+  # ══════════════════════════════════════════
+  # ALERT SERVICE — PAEL | Redis | ZGC
+  # ══════════════════════════════════════════
+  alert-service:
+    build:
+      context: ../..
+      dockerfile: services/alert-service/${DOCKERFILE:-Dockerfile.dev}
+    container_name: alert-service
+    restart: unless-stopped
+    ports:
+      - "8084:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - ../../services/alert-service/src:/app/services/alert-service/src
+      - ../../common:/app/common
+      - ~/.m2:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/alertdb
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis-alert
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_ALERT_PASSWORD}
+      - ALERT_TTL_SECONDS=1800
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+    env_file: ../../.env
+    networks:
+      - alert-net
+      - user-net
+      - internal-net
+      - kafka-net
+
+  # ══════════════════════════════════════════
+  # OBSERVABILITY SERVICE — PAEL | LocalStack | G1GC
+  # ══════════════════════════════════════════
+  observability-service:
+    build:
+      context: ../..
+      dockerfile: services/observability-service/${DOCKERFILE:-Dockerfile.dev}
+    container_name: observability-service
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - ../../services/observability-service/src:/app/services/observability-service/src
+      - ../../common:/app/common
+      - ~/.m2:/root/.m2
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - DYNAMODB_ENDPOINT=http://localstack:4566
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9093
+    env_file: ../../.env
+    networks:
+      - observability-net
+      - internal-net
+      - kafka-net
+
+# Networks externas — criadas pelo docker-compose-infra.yml
+networks:
+  internal-net:
+    external: true
+    name: weather_app_internal
+  kafka-net:
+    external: true
+    name: weather_app_kafka
+  weather-net:
+    external: true
+    name: weather_app_weather
+  routing-net:
+    external: true
+    name: weather_app_routing
+  user-net:
+    external: true
+    name: weather_app_user
+  alert-net:
+    external: true
+    name: weather_app_alert
+  observability-net:
+    external: true
+    name: weather_app_observability

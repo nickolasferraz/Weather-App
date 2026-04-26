@@ -1,3 +1,46 @@
 spring:
   application:
     name: weather-service
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: weather-service-group
+      auto-offset-reset: earliest
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:cloudWS}   # ⬅️ ver abaixo
+
+server:
+  port: 8082
+
+logging:
+  level:
+    org.springframework.data.redis: DEBUG
+
+weather:
+  api-key: 059807f2c321534e3dddb33a2aec8883
+
+management:
+  endpoints:
+    web:
+      base-path: /actuator
+      exposure:
+        include: health, metrics, prometheus, info
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      service: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true

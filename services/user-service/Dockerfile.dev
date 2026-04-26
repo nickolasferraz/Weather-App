@@ -1,0 +1,33 @@
+# Dockerfile.dev — user-service
+FROM maven:3.9-amazoncorretto-21
+WORKDIR /app
+
+COPY pom.xml ./pom.xml
+COPY common/common-events/pom.xml   ./common/common-events/pom.xml
+COPY common/common-lib/pom.xml      ./common/common-lib/pom.xml
+COPY common/saga-core/pom.xml       ./common/saga-core/pom.xml
+COPY services/user-service/pom.xml          ./services/user-service/pom.xml
+COPY services/weather-service/pom.xml       ./services/weather-service/pom.xml
+COPY services/routing-service/pom.xml       ./services/routing-service/pom.xml
+COPY services/alert-service/pom.xml         ./services/alert-service/pom.xml
+COPY services/observability-service/pom.xml ./services/observability-service/pom.xml
+
+COPY common/common-events/src  ./common/common-events/src
+COPY common/common-lib/src     ./common/common-lib/src
+COPY common/saga-core/src      ./common/saga-core/src
+
+RUN mvn install -N -DskipTests -q && \
+    mvn install \
+        -pl common/common-events,common/common-lib,common/saga-core \
+        -am -DskipTests -q
+
+RUN mvn dependency:go-offline -pl services/user-service -q
+
+COPY services/user-service/src ./services/user-service/src
+
+EXPOSE 8080
+
+CMD ["sh", "-c", \
+  "mvn install -N -q && \
+   mvn install -pl common/common-events,common/common-lib,common/saga-core -am -DskipTests -q && \
+   exec mvn spring-boot:run -pl services/user-service"]

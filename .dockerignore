@@ -1,0 +1,25 @@
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Maven targets (evita copiar JARs compilados no host)
+**/target/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Env files (segurança)
+.env
+.env.*
+
+# Node (se houver frontend futuro)
+node_modules/
+
+# Docker
+infra/docker/

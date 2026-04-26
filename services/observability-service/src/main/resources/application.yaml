@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: observability-service
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: observability-service-group
+      auto-offset-reset: earliest
+
+  management:
+    endpoints:
+      web:
+        base-path: /actuator
+        exposure:
+          include: health, metrics, prometheus, info
+    endpoint:
+      health:
+        show-details: always
+        show-components: always
+      prometheus:
+        enabled: true
+    metrics:
+      export:
+        prometheus:
+          enabled: true
+      tags:
+        application: ${spring.application.name}
+        service: ${spring.application.name}
+
+cloud:
+  aws:
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID:test}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+    region:
+      static: ${AWS_REGION:us-east-1}
+    dynamodb:
+      endpoint: ${DYNAMODB_ENDPOINT:http://localhost:4566}

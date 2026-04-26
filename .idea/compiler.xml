@@ -8,6 +8,26 @@
         <outputRelativeToContentRoot value="true" />
         <module name="Weather-APP" />
       </profile>
+      <profile name="Annotation profile for weather-app-parent" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/springframework/boot/spring-boot-configuration-processor/3.5.13/spring-boot-configuration-processor-3.5.13.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+        </processorPath>
+        <module name="routing-service" />
+        <module name="saga-core" />
+        <module name="alert-service" />
+        <module name="observability-service" />
+        <module name="common-lib" />
+        <module name="user-service" />
+        <module name="weather-service" />
+        <module name="common-events" />
+      </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="Weather-APP" target="25" />
+    </bytecodeTargetLevel>
   </component>
 </project>
